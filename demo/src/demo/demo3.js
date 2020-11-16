@@ -1,0 +1,1 @@
+// ES6 class-自己写一个promose
