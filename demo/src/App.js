@@ -8,6 +8,8 @@ import './App.css';
 //   price: 30,
 //   stock: 1000
 // }
+
+const request = require("request");
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -33,6 +35,8 @@ class App extends React.Component {
       console.log(value);
     });
   }
+
+  
 
   say = name => {
     console.log(name)
