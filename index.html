@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+
+    <title>Promise</title>
+
+    <link rel="stylesheet" href="dist/reset.css" />
+    <link rel="stylesheet" href="dist/reveal.css" />
+    <link rel="stylesheet" href="dist/theme/black.css" id="theme" />
+
+    <!-- Theme used for syntax highlighted code -->
+    <link rel="stylesheet" href="plugin/highlight/monokai.css" id="highlight-theme" />
+  </head>
+  <body>
+    <div class="reveal">
+      <div class="slides">
+        <section>
+          <img
+            src="https://timgsa.baidu.com/timg?image&quality=80&size=b9999_10000&sec=1605266570902&di=d0abc7166f2e3ee13bc0d415344a255c&imgtype=0&src=http%3A%2F%2Fpic4.zhimg.com%2Fv2-57d5a426a55657d5de729f0194c6cc2e_1200x500.jpg"
+            alt="reveal.js logo"
+            style="height: 180px; margin: 0 auto 4rem auto; background: transparent"
+            class="demo-logo"
+          />
+          <h3>详解Promise/Promise/A+</h3>
+          <p>
+            <small>Created by <a href="https://github.com/wangtengyz">wangteng</a> </small>
+          </p>
+        </section>
+
+        <section>
+          <h2>目录</h2>
+          <ol>
+            <li>什么是Promise</li>
+            <li>Promise解决了什么问题</li>
+            <li>Promise/A+基本概念</li>
+            <li>简单实现Promise/A+</li>
+            <li>测试Promise</li>
+            <li>其他Promise方法</li>
+            <li>总结</li>
+          </ol>
+        </section>
+        <!-- 1.什么是Promise -->
+        <section>
+          <section>
+            <h3>1.什么是Promise</h3>
+          </section>
+          <section data-background="#dddddd">
+            <ul>
+              <li>Promise 是异步编程的一种解决方案：从语法上讲，promise是一个对象，</li>
+              <li>
+                从它可以获取异步操作的消息；从本意上讲，它是承诺，承诺它过一段时间会给你一个结果。
+              </li>
+              <li>
+                promise有三种状态：
+                pending(等待态)，fulfiled(成功态)，rejected(失败态)；状态一旦改变，就不会再变。创造promise实例后，它会立即执行。
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <p>
+              ES6 规定，Promise对象是一个构造函数，用来生成Promise实例。
+              下面代码创造了一个Promise实例。
+            </p>
+            <pre data-id="code-animation"><code class="hljs" data-trim data-line-numbers>
+              const promise = new Promise(function(resolve, reject) {
+                // ... some code
+              
+                if (/* 异步操作成功 */){
+                  resolve(value);
+                } else {
+                  reject(error);
+                }
+              });
+            </code></pre>
+          </section>
+
+          <section data-background="#dddddd">
+            <p>Promise实例生成以后，可以用then方法分别指定resolved状态和rejected状态的回调函数。</p>
+            <pre data-id="code-animation"><code class="hljs" data-trim data-line-numbers>
+              promise.then(function(value) {
+                // success
+              }, function(error) {
+                // failure
+              });
+            </code></pre>
+          </section>
+
+          <section data-background="#dddddd">
+            <p>下面是一个Promise对象的简单例子。</p>
+            <pre data-id="code-animation"><code class="hljs" data-trim data-line-numbers>
+              function timeout(ms) {
+                return new Promise((resolve, reject) => {
+                  setTimeout(resolve, ms, 'done');
+                });
+              }
+              
+              timeout(100).then((value) => {
+                console.log(value);
+              });
+            </code></pre>
+          </section>
+        </section>
+        <!-- 2.Promise解决了什么问题 -->
+        <section>
+          <section>
+            <h3>2.Promise解决了什么问题</h3>
+          </section>
+          <section data-background="#dddddd">
+            <ol>
+              <li>
+                回调地狱: 某个异步操作需要等待之前的异步操作完成,
+                无论是回调还是事件都会陷入不断的嵌套
+              </li>
+
+              <li>
+                异步之间的联系: 某个异步操作需要等待多个异步操作的结果, 对这种联系的处理,
+                会让代码复杂度增加
+              </li>
+            </ol>
+          </section>
+          <section data-background="#dddddd">
+            <h4>Promise也有一些缺点</h4>
+            <ul>
+              <li>首先，无法取消Promise，一旦新建它就会立即执行，无法中途取消。</li>
+              <li>
+                其次，如果不设置回调函数(catch)，Promise内部抛出的错误，不会反应到外部。
+              </li>
+              <li>
+                第三，当处于pending状态时，无法得知目前进展到哪一个阶段（刚刚开始还是即将完成）。
+              </li>
+            </ul>
+          </section>
+        </section>
+
+        <!-- 3.Promise/A+基本概念 -->
+        <section>
+          <section>
+            <h3>3.Promise/A+基本概念</h3>
+          </section>
+          <section data-background="#dddddd">
+            <ul>
+              <li>
+                当别人问起来什么是Promise/A+规范，可能会觉得有点懵，你可能用过Promise，但很可能不了解什么是Promise规范。
+              </li>
+              <li>
+                其实Promise 规范有很多，如Promise/A，Promise/B，Promise/D 以及 Promise/A 的升级版
+                Promise/A+。ES6中采用了 Promise/A+ 规范。
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <ol>
+              <li>promise：是一个拥有 then 方法的对象或函数，其行为符合本规范</li>
+              <li>
+                thenable：是一个定义了 then
+                方法的对象或函数。这个主要是用来兼容一些老的Promise实现，只要一个Promise实现是thenable，也就是拥有then方法的，就可以跟Promises/A+兼容。
+              </li>
+              <li>
+                value：指reslove出来的值，可以是任何合法的JS值(包括 undefined , thenable 和
+                promise等)
+              </li>
+              <li>exception：异常，在Promise里面用throw抛出来的值</li>
+              <li>reason：拒绝原因，是reject里面传的参数，表示reject的原因</li>
+            </ol>
+          </section>
+
+          <section
+            data-background="#dddddd"
+            data-auto-animate
+            data-auto-animate-easing="cubic-bezier(0.770, 0.000, 0.175, 1.000)"
+          >
+            <h2>Promise有三个状态</h2>
+            <div class="r-hstack justify-center">
+              <div
+                data-id="box1"
+                style="
+                  background: #999;
+                  width: 50px;
+                  height: 50px;
+                  margin: 10px;
+                  border-radius: 5px;
+                "
+              ></div>
+              <div
+                data-id="box2"
+                style="
+                  background: #999;
+                  width: 50px;
+                  height: 50px;
+                  margin: 10px;
+                  border-radius: 5px;
+                "
+              ></div>
+              <div
+                data-id="box3"
+                style="
+                  background: #999;
+                  width: 50px;
+                  height: 50px;
+                  margin: 10px;
+                  border-radius: 5px;
+                "
+              ></div>
+            </div>
+          </section>
+
+          <section
+            data-background="#dddddd"
+            data-auto-animate
+            data-auto-animate-easing="cubic-bezier(0.770, 0.000, 0.175, 1.000)"
+          >
+            <div class="r-hstack justify-center">
+              <div
+                data-id="box1"
+                data-auto-animate-delay="0"
+                style="
+                  background: cyan;
+                  width: 150px;
+                  height: 100px;
+                  margin: 10px;
+                  line-height: 100px;
+                  color: #000;
+                "
+              >
+                pending
+              </div>
+              <div
+                data-id="box2"
+                data-auto-animate-delay="0.1"
+                style="
+                  background: magenta;
+                  width: 150px;
+                  height: 100px;
+                  margin: 10px;
+                  line-height: 100px;
+                  color: #000;
+                "
+              >
+                fulfilled
+              </div>
+              <div
+                data-id="box3"
+                data-auto-animate-delay="0.2"
+                style="
+                  background: yellow;
+                  width: 150px;
+                  height: 100px;
+                  margin: 10px;
+                  line-height: 100px;
+                  color: #000;
+                "
+              >
+                rejected
+              </div>
+            </div>
+            <h2 style="margin-top: 20px">Promise状态</h2>
+          </section>
+
+          <section data-background="#dddddd">
+            <ol>
+              <li>pending: 一个promise在resolve或者reject前就处于这个状态。</li>
+              <li>
+                fulfilled:
+                一个promise被resolve后就处于fulfilled状态，这个状态不能再改变，而且必须拥有一个不可变的值(value)。
+              </li>
+              <li>
+                rejected:
+                一个promise被reject后就处于rejected状态，这个状态也不能再改变，而且必须拥有一个不可变的拒绝原因(reason)。
+              </li>
+            </ol>
+          </section>
+
+          <section data-background="#dddddd">
+            <p style="text-align: left">
+              注意这里的不可变指的是===，也就是说，如果value或者reason是对象，只要保证引用不变就行，规范没有强制要求里面的属性也不变。Promise状态其实很简单，画张图就是:
+            </p>
+            <img
+              class="r-frame"
+              style="background: rgba(255, 255, 255, 0.1)"
+              width="545"
+              height="296"
+              data-src="https://img.ikstatic.cn/MTYwNTE2ODU2MDQ4MSM2OTUjanBn.jpg"
+              alt="Down arrow"
+            />
+          </section>
+
+          <section data-background="#dddddd">
+            <h3>then方法</h3>
+            <p style="text-align: left">
+              一个promise必须拥有一个then方法来访问他的值或者拒绝原因。then方法有两个参数：
+            </p>
+            <pre data-id="code-animation"><code class="hljs" data-trim data-line-numbers>
+              promise.then(onFulfilled, onRejected)
+            </code></pre>
+          </section>
+
+          <section data-background="#dddddd">
+            <h3>then方法特性</h3>
+            <ol>
+              <li>参数可选</li>
+              <li>多次调用</li>
+              <li>返回一个新的promise 对象</li>
+            </ol>
+          </section>
+
+          <section data-background="#dddddd">
+            <h4>参数可选</h4>
+            <h5>onFulfilled 和 onRejected 都是可选参数。</h5>
+            <ul>
+              <li>如果 onFulfilled 不是函数，其必须被忽略</li>
+              <li>如果 onRejected 不是函数，其必须被忽略</li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <p>onFulfilled 特性, 如果 onFulfilled 是函数：</p>
+            <ul>
+              <li>当 promise 执行结束后其必须被调用，其第一个参数为 promise 的终值value</li>
+              <li>在 promise 执行结束前其不可被调用</li>
+              <li>其调用次数不可超过一次</li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <p>onRejected 特性, 如果 onRejected 是函数：</p>
+            <ul>
+              <li>当 promise 被拒绝执行后其必须被调用，其第一个参数为 promise 的拒因reason</li>
+              <li>在 promise 被拒绝执行前其不可被调用</li>
+              <li>其调用次数不可超过一次</li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <h4>多次调用</h4>
+            <p>then 方法可以被同一个 promise 调用多次</p>
+            <ul>
+              <li>当 promise 成功执行时，所有 onFulfilled 需按照其注册顺序依次回调</li>
+              <li>当 promise 被拒绝执行时，所有的 onRejected 需按照其注册顺序依次回调</li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <h4>返回一个新的promise 对象</h4>
+            <pre data-id="code-animation"><code class="hljs" data-trim data-line-numbers>
+              promise2 = promise1.then(onFulfilled, onRejected); 
+            </code></pre>
+            <ul>
+              <li>
+                如果 onFulfilled 或者 onRejected 返回一个值 x ，则运行 Promise
+                解决过程：[[Resolve]](promise2, x)
+              </li>
+              <li>
+                如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2
+                必须拒绝执行，并返回拒因 e
+              </li>
+              <li>
+                如果 onFulfilled 不是函数且 promise1 成功执行， promise2 必须成功执行并返回相同的值
+              </li>
+              <li>
+                如果 onRejected 不是函数且 promise1 拒绝执行， promise2 必须拒绝执行并返回相同的拒因
+              </li>
+            </ul>
+          </section>
+
+          <section data-background="#dddddd">
+            <h4>Promise标准解读，主要记住两点</h4>
+            <ol>
+              <li>
+                一个promise的当前状态只能是pending、fulfilled和rejected三种之一。状态改变只能是pending到fulfilled或者pending到rejected。状态改变不可逆。
+              </li>
+              <li>
+                then实现链式调用，promise的then方法接收两个可选参数，表示该promise状态改变时的回调(promise.then(onFulfilled,
+                onRejected))。then方法返回一个promise，then 方法可以被同一个 promise 调用多次。
+              </li>
+            </ol>
+          </section>
+        </section>
+
+        <!-- 4.简单实现Promise/A+ -->
+        <section>
+          <section>
+            <h3>4.简单实现Promise/A+</h3>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65">
+            <h4>
+              我们自己要写一个Promise，肯定需要知道有哪些工作需要做，我们先从Promise的使用来窥探下需要做啥:
+            </h4>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65">
+            <ul>
+              <li>
+                新建Promise需要使用new关键字，那他肯定是作为面向对象的方式调用的，Promise是一个类。
+              </li>
+              <li>我们new Promise(fn)的时候需要传一个函数进去，说明Promise的参数是一个函数。</li>
+              <li>
+                构造函数传进去的fn会收到resolve和reject两个函数，用来表示Promise成功和失败，说明构造函数里面还需要resolve和reject这两个函数，这两个函数的作用是改变Promise的状态。
+              </li>
+            </ul>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65">
+            <ul>
+              <li>
+                根据规范，promise有pending，fulfilled，rejected三个状态，初始状态为pending，调用resolve会将其改为fulfilled，调用reject会改为rejected。
+              </li>
+              <li>
+                promise实例对象建好后可以调用then方法，而且是可以链式调用then方法，说明then是一个实例方法。简单的说就是then方法也必须返回一个带then方法的对象，可以是this或者新的promise实例。
+              </li>
+            </ul>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <h4>MyPromise构造函数</h4>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|2-4|7-9|14-26|30-36"><script type="text/template">
+// 先定义三个常量表示状态
+var PENDING = 'pending';
+var FULFILLED = 'fulfilled';
+var REJECTED = 'rejected';
+
+function MyPromise(fn) {
+  this.status = PENDING;    // 初始状态为pending
+  this.value = null;        // 初始化value
+  this.reason = null;       // 初始化reason
+
+  // 存一下this,以便resolve和reject里面访问
+  var that = this;
+  // 根据规范，resolve方法是将状态改为fulfilled，reject是将状态改为rejected。
+  // resolve方法参数是value
+  function resolve(value) {
+    if(that.status === PENDING) {
+      that.status = FULFILLED;
+      that.value = value;
+    }
+  }
+  
+  // reject方法参数是reason
+  function reject(reason) {
+    if(that.status === PENDING) {
+      that.status = REJECTED;
+      that.reason = reason;
+    }
+  }
+
+  // 调用构造函数参数
+  // 最后将resolve和reject作为参数调用传进来的参数，记得加上try，如果捕获到错误就reject。
+  try {
+    fn(resolve, reject);
+  } catch (error) {
+    reject(error);
+  }
+}
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <h4>then方法</h4>
+            <p style="text-align: left;">根据我们前面的分析，then方法可以链式调用，所以他是实例方法，而且规范中的API是promise.then(onFulfilled, onRejected)，我们先把架子搭出来：</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|2-4|7-9|14-26|30-36"><script type="text/template">
+              MyPromise.prototype.then = function(onFulfilled, onRejected) {}
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">那then方法里面应该干什么呢，其实规范也告诉我们了，先检查onFulfilled和onRejected是不是函数，如果不是函数就忽略他们，所谓“忽略”并不是什么都不干，对于onFulfilled来说“忽略”就是将value原封不动的返回，对于onRejected来说就是返回reason，onRejected因为是错误分支，我们返回reason应该throw一个Error:</p>
+          </section>
+
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|3-8|11-16"><script type="text/template">
+              MyPromise.prototype.then = function(onFulfilled, onRejected) {
+                // 如果onFulfilled不是函数，给一个默认函数，返回value
+                var realOnFulfilled = onFulfilled;
+                if(typeof realOnFulfilled !== 'function') {
+                  realOnFulfilled = function (value) {
+                    return value;
+                  }
+                }
+              
+                // 如果onRejected不是函数，给一个默认函数，返回reason的Error
+                var realOnRejected = onRejected;
+                if(typeof realOnRejected !== 'function') {
+                  realOnRejected = function (reason) {
+                    throw reason;
+                  }
+                }
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">参数检查完后就该干点真正的事情了，想想我们使用Promise的时候，如果promise操作成功了就会调用then里面的onFulfilled，如果他失败了，就会调用onRejected。对应我们的代码就应该检查下promise的status，如果是FULFILLED，就调用onFulfilled，如果是REJECTED，就调用onRejected:</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|3-8|11-16"><script type="text/template">
+              MyPromise.prototype.then = function(onFulfilled, onRejected) {
+                // ...省略前面代码...
+              
+                if(this.status === FULFILLED) {
+                  onFulfilled(this.value)
+                }
+              
+                if(this.status === REJECTED) {
+                  onRejected(this.reason);
+                }
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">再想一下，我们新建一个promise的时候可能是直接这样用的:</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|3-8|11-16"><script type="text/template">
+              new Promise(fn).then(onFulfilled, onRejected);
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">上面代码then是在实例对象一创建好就调用了，这时候fn里面的异步操作可能还没结束呢，也就是说他的status还是PENDING，这怎么办呢，这时候我们肯定不能立即调onFulfilled或者onRejected的，因为fn到底成功还是失败还不知道呢。</p>
+          </section>
+          
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">那什么时候知道fn成功还是失败呢？答案是fn里面主动调resolve或者reject的时候。所以如果这时候status状态还是PENDING，我们应该将onFulfilled和onRejected两个回调存起来，等到fn有了结论，resolve或者reject的时候再来调用对应的代码。</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">因为后面then还有链式调用，会有多个onFulfilled和onRejected，我这里用两个数组将他们存起来，等resolve或者reject的时候将数组里面的全部方法拿出来执行一遍：</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|5-7|12-15|22-25|34-38"><script type="text/template">
+// 构造函数
+function MyPromise(fn) {
+  // ...省略其他代码...
+  
+  // 构造函数里面添加两个数组存储成功和失败的回调
+  this.onFulfilledCallbacks = [];
+  this.onRejectedCallbacks = [];
+  
+  function resolve(value) {
+    if(that.status === PENDING) {
+      // ...省略其他代码...
+      // resolve里面将所有成功的回调拿出来执行
+      that.onFulfilledCallbacks.forEach(callback => {
+        callback(that.value);
+      });
+    }
+  }
+  
+  function reject(reason) {
+    if(that.status === PENDING) {
+      // ...省略其他代码...
+      // resolve里面将所有失败的回调拿出来执行
+      that.onRejectedCallbacks.forEach(callback => {
+        callback(that.reason);
+      });
+    }
+  }
+}
+
+// then方法
+MyPromise.prototype.then = function(onFulfilled, onRejected) {
+  // ...省略其他代码...
+
+  // 如果还是PENDING状态，将回调保存下来
+  if(this.status === PENDING) {
+    this.onFulfilledCallbacks.push(realOnFulfilled);
+    this.onRejectedCallbacks.push(realOnRejected);
+  }
+}
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <h4>then的返回值</h4>
+            <p style="text-align: left;">根据规范then的返回值必须是一个promise，规范还定义了不同情况应该怎么处理，我们先来处理几种比较简单的情况:</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">1.如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2 必须拒绝执行，并返回拒因 e。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|12|27|49"><script type="text/template">
+              MyPromise.prototype.then = function(onFulfilled, onRejected) {
+                // ... 省略其他代码 ...
+                
+                // 有了这个要求，在RESOLVED和REJECTED的时候就不能简单的运行onFulfilled和onRejected了。
+                // 我们需要将他们用try...catch...包起来，如果有错就reject。
+                if(this.status === FULFILLED) {
+                  var promise2 = new MyPromise(function(resolve, reject) {
+                    try {
+                      realOnFulfilled(that.value);
+                    } catch (error) {
+                      reject(error);
+                    }
+                  });
+                
+                  return promise2;
+                }
+              
+                if(this.status === REJECTED) {
+                  var promise2 = new MyPromise(function(resolve, reject) {
+                    try {
+                      realOnRejected(that.reason);
+                    } catch (error) {
+                      reject(error);
+                    }
+                  });
+                
+                  return promise2;
+                }
+                
+                // 如果还是PENDING状态，也不能直接保存回调方法了，需要包一层来捕获错误
+                if(this.status === PENDING) {
+                  var promise2 = new MyPromise(function(resolve, reject) {
+                    that.onFulfilledCallbacks.push(function() {
+                      try {
+                        realOnFulfilled(that.value);
+                      } catch (error) {
+                        reject(error);
+                      }
+                    });
+                    that.onRejectedCallbacks.push(function() {
+                      try {
+                        realOnRejected(that.reason);
+                      } catch (error) {
+                        reject(error);
+                      }
+                    });
+                  });
+                
+                  return promise2;
+                }
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">2.如果 onFulfilled 不是函数且 promise1 成功执行， promise2 必须成功执行并返回相同的值</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|7|10"><script type="text/template">
+// 我们就根据要求加个判断，注意else里面是正常执行流程，需要resolve
+// 这是个例子，每个realOnFulfilled后面都要这样写
+  if(this.status === FULFILLED) {
+    var promise2 = new MyPromise(function(resolve, reject) {
+      try {
+        if (typeof onFulfilled !== 'function') {
+          resolve(that.value);
+        } else {
+          realOnFulfilled(that.value);
+          resolve(that.value);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    });
+  
+    return promise2;
+  }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">3.如果 onRejected 不是函数且 promise1 拒绝执行， promise2 必须拒绝执行并返回相同的据因。这个要求其实在我们检测 onRejected 不是函数的时候已经做到了，因为我们默认给的onRejected里面会throw一个Error，所以代码肯定会走到catch里面去。</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">但是我们为了更直观，代码还是跟规范一一对应吧。需要注意的是，如果promise1的onRejected执行成功了，promise2应该被resolve。改造代码如下:</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|7|8"><script type="text/template">
+              if(this.status === REJECTED) {
+                var promise2 = new MyPromise(function(resolve, reject) {
+                  try {
+                    if(typeof onRejected !== 'function') {
+                      reject(that.reason);
+                    } else {
+                      realOnRejected(that.reason);
+                      resolve();
+                    }
+                  } catch (error) {
+                    reject(error);
+                  }
+                });
+              
+                return promise2;
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">4.如果 onFulfilled 或者 onRejected 返回一个值 x ，则运行下面的 Promise 解决过程：[[Resolve]](promise2, x)。这条其实才是规范的第一条，因为他比较麻烦，所以我将它放到了最后。前面我们代码的实现，其实只要onRejected或者onFulfilled成功执行了，我们都要resolve promise2。多了这条，我们还需要对onRejected或者onFulfilled的返回值进行判断，如果有返回值就要进行 Promise 解决过程。</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">我们专门写一个方法来进行Promise 解决过程。前面我们代码的实现，其实只要onRejected或者onFulfilled成功执行了，我们都要resolve promise2，这个过程我们也放到这个方法里面去吧，所以代码变为下面这样，其他地方类似：</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|8"><script type="text/template">
+              if(this.status === FULFILLED) {
+                var promise2 = new MyPromise(function(resolve, reject) {
+                  try {
+                    if (typeof onFulfilled !== 'function') {
+                      resolve(that.value);
+                    } else {
+                      var x = realOnFulfilled(that.value);
+                      resolvePromise(promise2, x, resolve, reject);   // 调用Promise 解决过程
+                    }
+                  } catch (error) {
+                    reject(error);
+                  }
+                });
+              
+                return promise2;
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <h4>Promise 解决过程</h4>
+            <p style="text-align: left;">现在我们该来实现resolvePromise方法了，规范中这一部分较长，直接把规范作为注释写在代码里面了。</p>
+          </section>
+          
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|2-6|8-15|19-21|23-29|38-48|57-61|64-65|68-69"><script type="text/template">
+              function resolvePromise(promise, x, resolve, reject) {
+                // 如果 promise 和 x 指向同一对象，以 TypeError 为据因拒绝执行 promise
+                // 这是为了防止死循环
+                if (promise === x) {
+                  return reject(new TypeError('The promise and the return value are the same'));
+                }
+              
+                if (x instanceof MyPromise) {
+                  // 如果 x 为 Promise ，则使 promise 接受 x 的状态
+                  // 也就是继续执行x，如果执行的时候拿到一个y，还要继续解析y
+                  // 这个if跟下面判断then然后拿到执行其实重复了，可有可无
+                  x.then(function (y) {
+                    resolvePromise(promise, y, resolve, reject);
+                  }, reject);
+                }
+                // 如果 x 为对象或者函数
+                else if (typeof x === 'object' || typeof x === 'function') {
+                  // 这个坑是跑测试的时候发现的，如果x是null，应该直接resolve
+                  if (x === null) {
+                    return resolve(x);
+                  }
+              
+                  try {
+                    // 把 x.then 赋值给 then 
+                    var then = x.then;
+                  } catch (error) {
+                    // 如果取 x.then 的值时抛出错误 e ，则以 e 为据因拒绝 promise
+                    return reject(error);
+                  }
+              
+                  // 如果 then 是函数
+                  if (typeof then === 'function') {
+                    var called = false;
+                    // 将 x 作为函数的作用域 this 调用之
+                    // 传递两个回调函数作为参数，第一个参数叫做 resolvePromise ，第二个参数叫做 rejectPromise
+                    // 名字重名了，我直接用匿名函数了
+                    try {
+                      then.call(
+                        x,
+                        // 如果 resolvePromise 以值 y 为参数被调用，则运行 [[Resolve]](promise, y)
+                        function (y) {
+                          // 如果 resolvePromise 和 rejectPromise 均被调用，
+                          // 或者被同一参数调用了多次，则优先采用首次调用并忽略剩下的调用
+                          // 实现这条需要前面加一个变量called
+                          if (called) return;
+                          called = true;
+                          resolvePromise(promise, y, resolve, reject);
+                        },
+                        // 如果 rejectPromise 以据因 r 为参数被调用，则以据因 r 拒绝 promise
+                        function (r) {
+                          if (called) return;
+                          called = true;
+                          reject(r);
+                        });
+                    } catch (error) {
+                      // 如果调用 then 方法抛出了异常 e：
+                      // 如果 resolvePromise 或 rejectPromise 已经被调用，则忽略之
+                      if (called) return;
+              
+                      // 否则以 e 为据因拒绝 promise
+                      reject(error);
+                    }
+                  } else {
+                    // 如果 then 不是函数，以 x 为参数执行 promise
+                    resolve(x);
+                  }
+                } else {
+                  // 如果 x 不为对象或者函数，以 x 为参数执行 promise
+                  resolve(x);
+                }
+              }              
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <h4>onFulfilled 和 onRejected 的执行时机</h4>
+            <p style="text-align: left;">在规范中还有一条：onFulfilled 和 onRejected 只有在执行环境堆栈仅包含平台代码时才可被调用。这一条的意思是实践中要确保 onFulfilled 和 onRejected 方法异步执行，且应该在 then 方法被调用的那一轮事件循环之后的新执行栈中执行。</p>
+          </section>
+
+          <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
+            <p style="text-align: left;">所以在我们执行onFulfilled 和 onRejected的时候都应该包到setTimeout里面去。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|5|25|46|61"><script type="text/template">
+// 这块代码在then里面
+if(this.status === FULFILLED) {
+  var promise2 = new MyPromise(function(resolve, reject) {
+    // 这里加setTimeout
+    setTimeout(function() {
+      try {
+        if (typeof onFulfilled !== 'function') {
+          resolve(that.value);
+        } else {
+          var x = realOnFulfilled(that.value);
+          resolvePromise(promise2, x, resolve, reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    }, 0);
+  });
+
+  return promise2;
+}
+
+if(this.status === REJECTED) {
+  var promise2 = new MyPromise(function(resolve, reject) {
+    // 这里加setTimeout
+    setTimeout(function() {
+      try {
+        if(typeof onRejected !== 'function') {
+          reject(that.reason);
+        } else {
+          var x = realOnRejected(that.reason);
+          resolvePromise(promise2, x, resolve, reject);
+        }
+      } catch (error) {
+        reject(error);
+      }
+    }, 0);
+  });
+
+  return promise2;
+}
+
+if (this.status === PENDING) {
+  var promise2 = new MyPromise(function (resolve, reject) {
+    that.onFulfilledCallbacks.push(function () {
+      // 这里加setTimeout
+      setTimeout(function () {
+        try {
+          if (typeof onFulfilled !== 'function') {
+            resolve(that.value);
+          } else {
+            var x = realOnFulfilled(that.value);
+            resolvePromise(promise2, x, resolve, reject);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      }, 0);
+    });
+    that.onRejectedCallbacks.push(function () {
+      // 这里加setTimeout
+      setTimeout(function () {
+        try {
+          if (typeof onRejected !== 'function') {
+            reject(that.reason);
+          } else {
+            var x = realOnRejected(that.reason);
+            resolvePromise(promise2, x, resolve, reject);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      }, 0)
+    });
+  });
+
+  return promise2;
+}
+					</script></code></pre>
+          </section>
+
+        </section>
+        <!-- 5.测试Promise -->
+        <section>
+
+          <section>
+            <h3>5.测试Promise</h3>
+          </section>
+
+          <section data-background="#dddddd">
+            <p style="text-align: left;">我们使用Promise/A+官方的测试工具promises-aplus-tests来对我们的MyPromise进行测试，要使用这个工具我们必须实现一个静态方法deferred，官方对这个方法的定义如下:</p>
+            <ol>
+              <li>deferred: 返回一个包含{ promise, resolve, reject }的对象</li>
+              <li>promise 是一个处于pending状态的promise</li>
+              <li>resolve(value) 用value解决上面那个promise</li>
+              <li>reject(reason) 用reason拒绝上面那个promise</li>
+            </ol>
+          </section>
+
+          <section data-transition="slide" data-background="#dddddd" data-auto-animate>
+            <p style="text-align: left;">我们实现代码如下：</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs"><script type="text/template">
+              MyPromise.deferred = function() {
+                var result = {};
+                result.promise = new MyPromise(function(resolve, reject){
+                  result.resolve = resolve;
+                  result.reject = reject;
+                });
+              
+                return result;
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-transition="slide" data-background="#dddddd" data-auto-animate>
+            <p style="text-align: left;">然后用npm将promises-aplus-tests下载下来，再配置下package.json就可以跑测试了:</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|3|6"><script type="text/template">
+              {
+                "devDependencies": {
+                  "promises-aplus-tests": "^2.1.2"
+                },
+                "scripts": {
+                  "test": "promises-aplus-tests MyPromise"
+                }
+              }
+					</script></code></pre>
+          </section>
+
+        </section>
+        <!-- 6.其他Promise方法 -->
+        <section>
+
+          <section>
+            <h3>6.其他Promise方法</h3>
+          </section>
+
+          <section data-background="#dddddd">
+            <p style="text-align: left;">在ES6的官方Promise还有很多API，比如：</p>
+            <ol>
+              <li>Promise.resolve</li>
+              <li>Promise.reject</li>
+              <li>Promise.all</li>
+              <li>Promise.race</li>
+              <li>Promise.prototype.catch</li>
+              <li>Promise.prototype.finally</li>
+              <li>Promise.allSettled</li>
+            </ol>
+          </section>
+
+          <section data-background="#b5533c" >
+            <h3>Promise.resolve</h3>
+            <p style="text-align: left;">将现有对象转为Promise对象，如果 Promise.resolve 方法的参数，不是具有 then 方法的对象（又称 thenable 对象），则返回一个新的 Promise 对象，且它的状态为fulfilled。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|3|6"><script type="text/template">
+              MyPromise.resolve = function(parameter) {
+                if(parameter instanceof MyPromise) {
+                  return parameter;
+                }
+              
+                return new MyPromise(function(resolve) {
+                  resolve(parameter);
+                });
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-background="#b5533c" >
+            <h3>Promise.reject</h3>
+            <p style="text-align: left;">返回一个新的Promise实例，该实例的状态为rejected。Promise.reject方法的参数reason，会被传递给实例的回调函数。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs"><script type="text/template">
+              MyPromise.resolve = function(parameter) {
+                if(parameter instanceof MyPromise) {
+                  return parameter;
+                }
+              
+                return new MyPromise(function(resolve) {
+                  resolve(parameter);
+                });
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-background="#b5533c" >
+            <h3>Promise.all</h3>
+            <p style="text-align: left;">该方法用于将多个 Promise 实例，包装成一个新的 Promise 实例。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim><script type="text/template">
+              const p = Promise.all([p1, p2, p3]);
+          </script></code></pre>
+          <p style="text-align: left;">Promise.all()方法接受一个数组作为参数，p1、p2、p3都是 Promise 实例，如果不是，就会先调用Promise.resolve方法，将参数转为 Promise 实例，再进一步处理。</p>
+          </section>
+
+          <section data-background="#b5533c" >
+            <p style="text-align: left;">当p1, p2, p3全部resolve，大的promise才resolve，有任何一个reject，大的promise都reject。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|11-20"><script type="text/template">
+              MyPromise.all = function(promiseList) {
+                var resPromise = new MyPromise(function(resolve, reject) {
+                  var count = 0;
+                  var result = [];
+                  var length = promiseList.length;
+              
+                  if(length === 0) {
+                    return resolve(result);
+                  }
+              
+                  promiseList.forEach(function(promise, index) {
+                    MyPromise.resolve(promise).then(function(value){
+                      count++;
+                      result[index] = value;
+                      if(count === length) {
+                        resolve(result);
+                      }
+                    }, function(reason){
+                      reject(reason);
+                    });
+                  });
+                });
+              
+                return resPromise;
+              }
+					</script></code></pre>
+          </section>
+          
+          <section data-background="#b5533c" >
+            <h3>Promise.race</h3>
+            <p style="text-align: left;">该方法同样是将多个 Promise 实例，包装成一个新的 Promise 实例。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|8"><script type="text/template">
+              const p = Promise.race([p1, p2, p3]);
+					</script></code></pre>
+          </section>
+
+          <section data-background="#b5533c" >
+            <p style="text-align: left;">上面代码中，只要p1、p2、p3之中有一个实例率先改变状态，p的状态就跟着改变。那个率先改变的 Promise 实例的返回值，就传递给p的回调函数。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|9-13"><script type="text/template">
+              MyPromise.race = function(promiseList) {
+                var resPromise = new MyPromise(function(resolve, reject) {
+                  var length = promiseList.length;
+              
+                  if(length === 0) {
+                    return resolve();
+                  } else {
+                    for(var i = 0; i < length; i++) {
+                      MyPromise.resolve(promiseList[i]).then(function(value) {
+                        return resolve(value);
+                      }, function(reason) {
+                        return reject(reason);
+                      });
+                    }
+                  }
+                });
+              
+                return resPromise;
+              }
+					</script></code></pre>
+          </section>
+          
+          <section data-background="#b5533c" >
+            <h3>Promise.prototype.finally</h3>
+            <p style="text-align: left;">finally方法用于指定不管 Promise 对象最后状态如何，都会执行的操作。该方法是 ES2018 引入标准的。</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|8"><script type="text/template">
+              MyPromise.prototype.finally = function(fn) {
+                return this.then(function(value){
+                  return MyPromise.resolve(value).then(function(){
+                    return value;
+                  });
+                }, function(error){
+                  return MyPromise.resolve(reason).then(function() {
+                    throw error
+                  });
+                });
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-background="#b5533c" >
+            <h3>Promise.allSettled</h3>
+            <p style="text-align: left;">该方法接受一组 Promise 实例作为参数，包装成一个新的 Promise 实例。只有等到所有这些参数实例都返回结果，不管是fulfilled还是rejected，包装实例才会结束。该方法由 ES2020 引入。该方法返回的新的 Promise 实例，一旦结束，状态总是fulfilled，不会变成rejected。状态变成fulfilled后，Promise 的监听函数接收到的参数是一个数组，每个成员对应一个传入Promise.allSettled()的 Promise 实例的执行结果。</p>
+          </section>
+
+          <section data-background="#b5533c" >
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|17-23|24-32"><script type="text/template">
+              MyPromise.allSettled = function(promiseList) {
+                return new MyPromise(function(resolve){
+                  var length = promiseList.length;
+                  var result = [];
+                  var count = 0;
+              
+                  if(length === 0) {
+                    return resolve(result);
+                  } else {
+                    for(var i = 0; i < length; i++) {
+              
+                      (function(i){
+                        var currentPromise = MyPromise.resolve(promiseList[i]);
+              
+                        currentPromise.then(function(value){
+                          count++;
+                          result[i] = {
+                            status: 'fulfilled',
+                            value: value
+                          }
+                          if(count === length) {
+                            return resolve(result);
+                          }
+                        }, function(reason){
+                          count++;
+                          result[i] = {
+                            status: 'rejected',
+                            reason: reason
+                          }
+                          if(count === length) {
+                            return resolve(result);
+                          }
+                        });
+                      })(i)
+                    }
+                  }
+                });
+              }
+					</script></code></pre>
+          </section>
+
+          <section data-background="#b5533c" >
+            <p style="text-align: left;">完整代码</p>
+            <pre
+              data-id="code-animation"
+            ><code class="hljs" data-trim data-line-numbers="|6|18|31|122|125|134|143|162|182|50|57-64|228|238|244|270|290|294|306"><script type="text/template">
+// 先定义三个常量表示状态
+var PENDING = 'pending';
+var FULFILLED = 'fulfilled';
+var REJECTED = 'rejected';
+
+function MyPromise(fn) {
+  this.status = PENDING;    // 初始状态为pending
+  this.value = null;        // 初始化value
+  this.reason = null;       // 初始化reason
+
+  // 构造函数里面添加两个数组存储成功和失败的回调
+  this.onFulfilledCallbacks = [];
+  this.onRejectedCallbacks = [];
+
+  // 存一下this,以便resolve和reject里面访问
+  var that = this;
+  // resolve方法参数是value
+  function resolve(value) {
+    if (that.status === PENDING) {
+      that.status = FULFILLED;
+      that.value = value;
+
+      // resolve里面将所有成功的回调拿出来执行
+      that.onFulfilledCallbacks.forEach(callback => {
+        callback(that.value);
+      });
+    }
+  }
+
+  // reject方法参数是reason
+  function reject(reason) {
+    if (that.status === PENDING) {
+      that.status = REJECTED;
+      that.reason = reason;
+
+      // resolve里面将所有失败的回调拿出来执行
+      that.onRejectedCallbacks.forEach(callback => {
+        callback(that.reason);
+      });
+    }
+  }
+
+  try {
+    fn(resolve, reject);
+  } catch (error) {
+    reject(error);
+  }
+}
+
+function resolvePromise(promise, x, resolve, reject) {
+  // 如果 promise 和 x 指向同一对象，以 TypeError 为据因拒绝执行 promise
+  // 这是为了防止死循环
+  if (promise === x) {
+    return reject(new TypeError('The promise and the return value are the same'));
+  }
+
+  if (x instanceof MyPromise) {
+    // 如果 x 为 Promise ，则使 promise 接受 x 的状态
+    // 也就是继续执行x，如果执行的时候拿到一个y，还要继续解析y
+    // 这个if跟下面判断then然后拿到执行其实重复了，可有可无
+    x.then(function (y) {
+      resolvePromise(promise, y, resolve, reject);
+    }, reject);
+  }
+  // 如果 x 为对象或者函数
+  else if (typeof x === 'object' || typeof x === 'function') {
+    // 这个坑是跑测试的时候发现的，如果x是null，应该直接resolve
+    if (x === null) {
+      return resolve(x);
+    }
+
+    try {
+      // 把 x.then 赋值给 then 
+      var then = x.then;
+    } catch (error) {
+      // 如果取 x.then 的值时抛出错误 e ，则以 e 为据因拒绝 promise
+      return reject(error);
+    }
+
+    // 如果 then 是函数
+    if (typeof then === 'function') {
+      var called = false;
+      // 将 x 作为函数的作用域 this 调用之
+      // 传递两个回调函数作为参数，第一个参数叫做 resolvePromise ，第二个参数叫做 rejectPromise
+      // 名字重名了，我直接用匿名函数了
+      try {
+        then.call(
+          x,
+          // 如果 resolvePromise 以值 y 为参数被调用，则运行 [[Resolve]](promise, y)
+          function (y) {
+            // 如果 resolvePromise 和 rejectPromise 均被调用，
+            // 或者被同一参数调用了多次，则优先采用首次调用并忽略剩下的调用
+            // 实现这条需要前面加一个变量called
+            if (called) return;
+            called = true;
+            resolvePromise(promise, y, resolve, reject);
+          },
+          // 如果 rejectPromise 以据因 r 为参数被调用，则以据因 r 拒绝 promise
+          function (r) {
+            if (called) return;
+            called = true;
+            reject(r);
+          });
+      } catch (error) {
+        // 如果调用 then 方法抛出了异常 e：
+        // 如果 resolvePromise 或 rejectPromise 已经被调用，则忽略之
+        if (called) return;
+
+        // 否则以 e 为据因拒绝 promise
+        reject(error);
+      }
+    } else {
+      // 如果 then 不是函数，以 x 为参数执行 promise
+      resolve(x);
+    }
+  } else {
+    // 如果 x 不为对象或者函数，以 x 为参数执行 promise
+    resolve(x);
+  }
+}
+
+MyPromise.prototype.then = function (onFulfilled, onRejected) {
+  // 如果onFulfilled不是函数，给一个默认函数，返回value
+  // 后面返回新promise的时候也做了onFulfilled的参数检查，这里可以删除，暂时保留是为了跟规范一一对应，看得更直观
+  var realOnFulfilled = onFulfilled;
+  if (typeof realOnFulfilled !== 'function') {
+    realOnFulfilled = function (value) {
+      return value;
+    }
+  }
+
+  // 如果onRejected不是函数，给一个默认函数，返回reason的Error
+  // 后面返回新promise的时候也做了onRejected的参数检查，这里可以删除，暂时保留是为了跟规范一一对应，看得更直观
+  var realOnRejected = onRejected;
+  if (typeof realOnRejected !== 'function') {
+    realOnRejected = function (reason) {
+      throw reason;
+    }
+  }
+
+  var that = this;   // 保存一下this
+
+  if (this.status === FULFILLED) {
+    var promise2 = new MyPromise(function (resolve, reject) {
+      setTimeout(function () {
+        try {
+          if (typeof onFulfilled !== 'function') {
+            resolve(that.value);
+          } else {
+            var x = realOnFulfilled(that.value);
+            resolvePromise(promise2, x, resolve, reject);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      }, 0);
+    });
+
+    return promise2;
+  }
+
+  if (this.status === REJECTED) {
+    var promise2 = new MyPromise(function (resolve, reject) {
+      setTimeout(function () {
+        try {
+          if (typeof onRejected !== 'function') {
+            reject(that.reason);
+          } else {
+            var x = realOnRejected(that.reason);
+            resolvePromise(promise2, x, resolve, reject);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      }, 0);
+    });
+
+    return promise2;
+  }
+
+  // 如果还是PENDING状态，将回调保存下来
+  if (this.status === PENDING) {
+    var promise2 = new MyPromise(function (resolve, reject) {
+      that.onFulfilledCallbacks.push(function () {
+        setTimeout(function () {
+          try {
+            if (typeof onFulfilled !== 'function') {
+              resolve(that.value);
+            } else {
+              var x = realOnFulfilled(that.value);
+              resolvePromise(promise2, x, resolve, reject);
+            }
+          } catch (error) {
+            reject(error);
+          }
+        }, 0);
+      });
+      that.onRejectedCallbacks.push(function () {
+        setTimeout(function () {
+          try {
+            if (typeof onRejected !== 'function') {
+              reject(that.reason);
+            } else {
+              var x = realOnRejected(that.reason);
+              resolvePromise(promise2, x, resolve, reject);
+            }
+          } catch (error) {
+            reject(error);
+          }
+        }, 0)
+      });
+    });
+
+    return promise2;
+  }
+}
+
+MyPromise.deferred = function () {
+  var result = {};
+  result.promise = new MyPromise(function (resolve, reject) {
+    result.resolve = resolve;
+    result.reject = reject;
+  });
+
+  return result;
+}
+
+MyPromise.resolve = function (parameter) {
+  if (parameter instanceof MyPromise) {
+    return parameter;
+  }
+
+  return new MyPromise(function (resolve) {
+    resolve(parameter);
+  });
+}
+
+MyPromise.reject = function (reason) {
+  return new MyPromise(function (resolve, reject) {
+    reject(reason);
+  });
+}
+
+MyPromise.all = function (promiseList) {
+  var resPromise = new MyPromise(function (resolve, reject) {
+    var count = 0;
+    var result = [];
+    var length = promiseList.length;
+
+    if (length === 0) {
+      return resolve(result);
+    }
+
+    promiseList.forEach(function (promise, index) {
+      MyPromise.resolve(promise).then(function (value) {
+        count++;
+        result[index] = value;
+        if (count === length) {
+          resolve(result);
+        }
+      }, function (reason) {
+        reject(reason);
+      });
+    });
+  });
+
+  return resPromise;
+}
+
+MyPromise.race = function (promiseList) {
+  var resPromise = new MyPromise(function (resolve, reject) {
+    var length = promiseList.length;
+
+    if (length === 0) {
+      return resolve();
+    } else {
+      for (var i = 0; i < length; i++) {
+        MyPromise.resolve(promiseList[i]).then(function (value) {
+          return resolve(value);
+        }, function (reason) {
+          return reject(reason);
+        });
+      }
+    }
+  });
+
+  return resPromise;
+}
+
+MyPromise.prototype.catch = function (onRejected) {
+  this.then(null, onRejected);
+}
+
+MyPromise.prototype.finally = function (fn) {
+  return this.then(function (value) {
+    return MyPromise.resolve(fn()).then(function () {
+      return value;
+    });
+  }, function (error) {
+    return MyPromise.resolve(fn()).then(function () {
+      throw error
+    });
+  });
+}
+
+MyPromise.allSettled = function (promiseList) {
+  return new MyPromise(function (resolve) {
+    var length = promiseList.length;
+    var result = [];
+    var count = 0;
+
+    if (length === 0) {
+      return resolve(result);
+    } else {
+      for (var i = 0; i < length; i++) {
+
+        (function (i) {
+          var currentPromise = MyPromise.resolve(promiseList[i]);
+
+          currentPromise.then(function (value) {
+            count++;
+            result[i] = {
+              status: 'fulfilled',
+              value: value
+            }
+            if (count === length) {
+              return resolve(result);
+            }
+          }, function (reason) {
+            count++;
+            result[i] = {
+              status: 'rejected',
+              reason: reason
+            }
+            if (count === length) {
+              return resolve(result);
+            }
+          });
+        })(i)
+      }
+    }
+  });
+}
+
+module.exports = MyPromise;
+
+					</script></code></pre>
+          </section>
+
+        </section>
+        <!-- 7.总结 -->
+        <section>
+          <section>
+            <h3>7.总结</h3>
+          </section>
+
+          <section data-background="#b5533c">
+            <p style="text-align: left;">至此，我们的Promise就简单实现了，只是我们不是原生代码，不能做成微任务，如果一定要做成微任务的话，只能用其他微任务API模拟，比如MutaionObserver或者process.nextTick。下面再回顾下几个要点:</p>
+          </section>
+
+          <section data-background="#b5533c">
+            <ul>
+              <li>Promise其实是一个发布订阅模式</li>
+              <li>then方法对于还在pending的任务，其实是将回调函数onFilfilled和onRejected塞入了两个数组</li>
+              <li>then方法会返回一个新的Promise以便执行链式调用</li>
+            </ul>
+          </section>
+
+          <section data-background="#b5533c">
+            <ul>
+              <li>Promise构造函数里面的resolve方法会将数组onFilfilledCallbacks里面的方法全部拿出来执行，这里面是之前then方法塞进去的成功回调</li>
+              <li>Promise构造函数里面的reject方法会将数组onRejectedCallbacks里面的方法全部拿出来执行，这里面是之前then方法塞进去的失败回调</li>
+              <li>catch和finally这些实例方法都必须返回一个新的Promise实例以便实现链式调用</li>
+            </ul>
+          </section>
+
+          <section data-background="#b5533c">
+            <h3>分享结束，谢谢！</h3>
+          </section>
+
+        </section>
+      </div>
+    </div>
+
+    <script src="dist/reveal.js"></script>
+    <script src="plugin/notes/notes.js"></script>
+    <script src="plugin/markdown/markdown.js"></script>
+    <script src="plugin/highlight/highlight.js"></script>
+    <script>
+      // More info about initialization & config:
+      // - https://revealjs.com/initialization/
+      // - https://revealjs.com/config/
+      Reveal.initialize({
+        hash: true,
+
+        // Learn about plugins: https://revealjs.com/plugins/
+        plugins: [RevealMarkdown, RevealHighlight, RevealNotes],
+      })
+    </script>
+  </body>
+</html>
