@@ -527,7 +527,7 @@ function MyPromise(fn) {
             <p style="text-align: left;">根据我们前面的分析，then方法可以链式调用，所以他是实例方法，而且规范中的API是promise.then(onFulfilled, onRejected)，我们先把架子搭出来：</p>
             <pre
               data-id="code-animation"
-            ><code class="hljs" data-trim data-line-numbers="|2-4|7-9|14-26|30-36"><script type="text/template">
+            ><code class="hljs" data-trim><script type="text/template">
               MyPromise.prototype.then = function(onFulfilled, onRejected) {}
 					</script></code></pre>
           </section>
@@ -568,7 +568,7 @@ function MyPromise(fn) {
           <section data-transition="slide" data-background="#4d7e65" data-auto-animate>
             <pre
               data-id="code-animation"
-            ><code class="hljs" data-trim data-line-numbers="|3-8|11-16"><script type="text/template">
+            ><code class="hljs" data-trim data-line-numbers="|4-9"><script type="text/template">
               MyPromise.prototype.then = function(onFulfilled, onRejected) {
                 // ...省略前面代码...
               
@@ -587,7 +587,7 @@ function MyPromise(fn) {
             <p style="text-align: left;">再想一下，我们新建一个promise的时候可能是直接这样用的:</p>
             <pre
               data-id="code-animation"
-            ><code class="hljs" data-trim data-line-numbers="|3-8|11-16"><script type="text/template">
+            ><code class="hljs" data-trim><script type="text/template">
               new Promise(fn).then(onFulfilled, onRejected);
 					</script></code></pre>
           </section>
@@ -656,7 +656,7 @@ MyPromise.prototype.then = function(onFulfilled, onRejected) {
             <p style="text-align: left;">1.如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2 必须拒绝执行，并返回拒因 e。</p>
             <pre
               data-id="code-animation"
-            ><code class="hljs" data-trim data-line-numbers="|12|27|49"><script type="text/template">
+            ><code class="hljs" data-trim data-line-numbers="|15|27|49"><script type="text/template">
               MyPromise.prototype.then = function(onFulfilled, onRejected) {
                 // ... 省略其他代码 ...
                 
