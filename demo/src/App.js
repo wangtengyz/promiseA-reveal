@@ -1,6 +1,7 @@
 import React from 'react';
 // import drugstore from './demo/subscribe-demo' // 订阅发布模式示范
-import './demo/eat-then'
+// import './demo/eat-then'
+import MyPromise from './demo/demo1'
 import './App.css';
 // const data = {
 //   type: 'N95',
@@ -20,7 +21,17 @@ class App extends React.Component {
   }
 
   init = () => {
-  
+    const promise1 = new MyPromise((resolve) => {
+      request('https://www.baidu.com', function (error, response) {
+        if (!error && response.statusCode === 200) {
+          resolve('request1 success');
+        }
+      });
+    });
+    
+    promise1.then(function(value) {
+      console.log(value);
+    });
   }
 
   say = name => {

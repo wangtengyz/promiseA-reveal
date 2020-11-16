@@ -1,45 +1,33 @@
 # 详解Promise/Promise/A+
 
-## 什么是Promise？
-Promise 是异步编程的一种解决方案：从语法上讲，promise是一个对象，从它可以获取异步操作的消息；从本意上讲，它是承诺，承诺它过一段时间会给你一个结果。promise有三种状态： pending(等待态)，fulfiled(成功态)，rejected(失败态)；状态一旦改变，就不会再变。创造promise实例后，它会立即执行。
+## 我们什么时候要用promise
 
-ES6 规定，Promise对象是一个构造函数，用来生成Promise实例。
-下面代码创造了一个Promise实例。
-```
-const promise = new Promise(function(resolve, reject) {
-  // ... some code
+### 异步场景（isLogin => userInfo or login）
 
-  if (/* 异步操作成功 */){
-    resolve(value);
-  } else {
-    reject(error);
-  }
-});
-```
+调用判断用户是否登录， 根据返回值再做获取用户信息还是跳去登录界面
 
-Promise实例生成以后，可以用then方法分别指定resolved状态和rejected状态的回调函数。
+### 并发场景
 
-```
-promise.then(function(value) {
-  // success
-}, function(error) {
-  // failure
-});
-```
+比如多个图表同时展示，每个图表走不同到接口，需要等所有数据返回后，同时渲染处理。
 
-下面是一个Promise对象的简单例子。
-```
-function timeout(ms) {
-  return new Promise((resolve, reject) => {
-    setTimeout(resolve, ms, 'done');
-  });
-}
+### 异步接口
 
-timeout(100).then((value) => {
-  console.log(value);
-});
 
-```
+## 什么时候要用到链式调用？
+
+### $('#app').add().style().animate()
+
+### promise.then().then().catch()
+
+### Object.keys(obj).map().join().split()
+
+这三个虽然都是链式调用，
+
+
+## unhandledrejection 问题
+
+
+## promise哪里是异步？
 
 ## Promise解决了什么问题
 1. 回调地狱: 某个异步操作需要等待之前的异步操作完成, 无论是回调还是事件都会陷入不断的嵌套
@@ -68,67 +56,6 @@ Promise也有一些缺点。
 5. reason：拒绝原因，是reject里面传的参数，表示reject的原因
 
 ```
-
-### Promise状态
-Promise总共有三个状态:
-```
-1. pending: 一个promise在resolve或者reject前就处于这个状态。
-
-2. fulfilled: 一个promise被resolve后就处于fulfilled状态，这个状态不能再改变，而且必须拥有一个不可变的值(value)。
-
-3. rejected: 一个promise被reject后就处于rejected状态，这个状态也不能再改变，而且必须拥有一个不可变的拒绝原因(reason)。
-
-```
-
-注意这里的不可变指的是===，也就是说，如果value或者reason是对象，只要保证引用不变就行，规范没有强制要求里面的属性也不变。Promise状态其实很简单，画张图就是:
-
-![](https://img.ikstatic.cn/MTYwNTE2ODU2MDQ4MSM2OTUjanBn.jpg)
-
-### then方法
-
-一个promise必须拥有一个then方法来访问他的值或者拒绝原因。then方法有两个参数：
-
-```
-promise.then(onFulfilled, onRejected)
-```
-
-#### 参数可选
-
-onFulfilled 和 onRejected 都是可选参数。
-
-* 如果 onFulfilled 不是函数，其必须被忽略
-* 如果 onRejected 不是函数，其必须被忽略
-
-onFulfilled 特性
-如果 onFulfilled 是函数：
-
-* 当 promise 执行结束后其必须被调用，其第一个参数为 promise 的终值value
-* 在 promise 执行结束前其不可被调用
-* 其调用次数不可超过一次
-
-onRejected 特性
-如果 onRejected 是函数：
-
-* 当 promise 被拒绝执行后其必须被调用，其第一个参数为 promise 的据因reason
-* 在 promise 被拒绝执行前其不可被调用
-* 其调用次数不可超过一次
-
-#### 多次调用
-then 方法可以被同一个 promise 调用多次
-
-* 当 promise 成功执行时，所有 onFulfilled 需按照其注册顺序依次回调
-* 当 promise 被拒绝执行时，所有的 onRejected 需按照其注册顺序依次回调
-
-#### 返回
-then 方法必须返回一个 promise 对象
-```
-promise2 = promise1.then(onFulfilled, onRejected); 
-```
-* 如果 onFulfilled 或者 onRejected 返回一个值 x ，则运行 Promise 解决过程：[[Resolve]](promise2, x)
-* 如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2 必须拒绝执行，并返回拒因 e
-* 如果 onFulfilled 不是函数且 promise1 成功执行， promise2 必须成功执行并返回相同的值
-* 如果 onRejected 不是函数且 promise1 拒绝执行， promise2 必须拒绝执行并返回相同的拒因
-
 
 Promise标准解读，主要记住两点
 ```
