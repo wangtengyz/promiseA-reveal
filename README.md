@@ -1,45 +1,165 @@
 # 详解Promise/Promise/A+
 
-## 什么是Promise？
-Promise 是异步编程的一种解决方案：从语法上讲，promise是一个对象，从它可以获取异步操作的消息；从本意上讲，它是承诺，承诺它过一段时间会给你一个结果。promise有三种状态： pending(等待态)，fulfiled(成功态)，rejected(失败态)；状态一旦改变，就不会再变。创造promise实例后，它会立即执行。
+## 我们什么时候要用promise
 
-ES6 规定，Promise对象是一个构造函数，用来生成Promise实例。
-下面代码创造了一个Promise实例。
+### 异步场景（isLogin => userInfo or login）
+
+调用判断用户是否登录， 根据返回值再做获取用户信息还是跳去登录界面
+
+### 并发场景
+
+比如多个图表同时展示，每个图表走不同到接口，需要等所有数据返回后，同时渲染处理。
+
+### 异步接口
+为啥要强调是异步接口，因为有些请求可以设置同步的
 ```
-const promise = new Promise(function(resolve, reject) {
-  // ... some code
-
-  if (/* 异步操作成功 */){
-    resolve(value);
-  } else {
-    reject(error);
-  }
-});
-```
-
-Promise实例生成以后，可以用then方法分别指定resolved状态和rejected状态的回调函数。
-
-```
-promise.then(function(value) {
-  // success
-}, function(error) {
-  // failure
-});
+XMLHttpRequest.open()
+初始化 HTTP 请求参数
+语法
+open(method, url, async, username, password)
 ```
 
-下面是一个Promise对象的简单例子。
+async 参数指示请求使用应该异步地执行。如果这个参数是 false，请求是同步的，后续对 send() 的调用将阻塞，直到响应完全接收。
+如果这个参数是 true 或省略，请求是异步的，且通常需要一个 onreadystatechange 事件句柄。
+
+举例-同步方式
 ```
-function timeout(ms) {
-  return new Promise((resolve, reject) => {
-    setTimeout(resolve, ms, 'done');
-  });
+var xmlhttp=newXMLHttpRequestObj ();
+xmlhttp.open('post','xxx.asp?s=dc',false);
+xmlhttp.setRequestHeader('Content-type','application/x-www-form-urlencoded');
+xmlhttp.send(true);
+alert('do something.....')
+```
+举例-异步方式
+```
+var sendStr='?a=1&b=2'; //url 的参数
+var xmlhttp=newXMLHttpRequestObj ();
+xmlhttp.onreadystatechange=function(){
+    if (xmlhttp.readyState==4){    
+        if(xmlhttp.status==200){
+           alert(xmlhttp.responseText);
+            //other.......
+        }
+    }
 }
+xmlhttp.open('post','xxx.asp',true);
+xmlhttp.setRequestHeader('Content-type','application/x-www-form-urlencoded');
+xmlhttp.send(sendStr);
+```
 
-timeout(100).then((value) => {
-  console.log(value);
-});
+## 链式调用的场景？
+
+### Object.keys(obj).map().join().split()
+
+对象的方法都返回的一个实例类型，该实例类型都有一些方法可以调用
+
+### jq的链式调用
 
 ```
+$('input[type="button"]')
+    .eq(0).click(function() {
+        alert('点击我!');
+}).end().eq(1)
+.click(function() {
+    $('input[type="button"]:eq(0)').trigger('click');
+}).end().eq(2)
+.toggle(function() {
+    $('.aa').hide('slow');
+}, function() {
+    $('.aa').show('slow');
+});
+```
+
+比如如上代码，先选择type类型为button的所有DOM，然后再选择第一个…
+
+我们自然想到每次其实就是返回选择后的结果，在js里面有什么东西可以指代这个吗？
+如果你想到this就对了。
+
+jq的方法都是挂在原型的，那么如果我们每次在内部方法返回this，也就是返回实例对象，那么我们就可以继续调用原型上的方法了，这样的就节省代码量，提高代码的效率，代码看起来更优雅。
+
+但是也会出现一个问题：所有对象的方法返回的都是对象本身，也就是说没有返回值，所以这种方法不一定在任何环境下都适合。
+
+
+### promise.then().then().catch()
+
+promise的链式调用如：
+
+```
+function start() {  
+    return new Promise((resolve, reject) => {  
+      resolve('start');  
+    });  
+  }  
+
+  start()  
+    .then(data => {  
+      console.log('result of start: ', data);  
+      return Promise.resolve(1); // p1  
+    })  
+    .then(data => {  
+      console.log('result of p1: ', data);  
+      return Promise.reject(2); // p2  
+    })  
+    .then(data => {  
+      console.log('result of p2: ', data);  
+      return Promise.resolve(3); // p3  
+    })  
+    .catch(ex => {  
+      console.log('ex: ', ex);  
+      return Promise.resolve(4); // p4  
+    })  
+    .then(data => {  
+      console.log('result of p4: ', data);  
+    });  
+
+```
+
+Promise的then其实都是实现了 thenable 接口，每个 then 都返回一个新的promise，除了第一个是start的实例其他的已经不是一个promise了。
+
+
+## promise哪里是异步？
+
+```
+new premise((resolve, reject) => {
+  console.log(11)
+  resolve('promise.resolve('这里面的才是异步')')
+  console.log(222)
+})
+```
+
+## unhandledrejection
+
+当一个 error 没有被处理会发生什么？例如，我们忘了在链的尾端附加 .catch，像这样：
+
+```
+new Promise(function() {
+  noSuchFunction(); // 这里出现 error（没有这个函数）
+})
+  .then(() => {
+    // 一个或多个成功的 promise 处理程序（handler）
+  }); // 尾端没有 .catch！
+```
+当发生一个常规的错误（error）并且未被 try..catch 捕获时会发生什么？脚本死了，并在控制台（console）中留下了一个信息。对于在 promise 中未被处理的 rejection，也会发生类似的事儿。
+
+JavaScript 引擎会跟踪此类 rejection，在这种情况下会生成一个全局的 error。如果你运行上面这个代码，你可以在控制台（console）中看到。
+
+在浏览器中，我们可以使用 unhandledrejection 事件来捕获这类 error：
+
+```
+window.addEventListener('unhandledrejection', function(event) {
+  // 这个事件对象有两个特殊的属性：
+  alert(event.promise); // [object Promise] - 生成该全局 error 的 promise
+  alert(event.reason); // Error: Whoops! - 未处理的 error 对象
+});
+
+new Promise(function() {
+  throw new Error("Whoops!");
+}); // 没有用来处理 error 的 catch
+```
+
+这个事件是 HTML 标准 的一部分。
+
+如果出现了一个 error，并且在这儿没有 .catch，那么 unhandledrejection 处理程序（handler）就会被触发，并获取具有 error 相关信息的 event 对象，所以我们就能做一些后续处理了。
 
 ## Promise解决了什么问题
 1. 回调地狱: 某个异步操作需要等待之前的异步操作完成, 无论是回调还是事件都会陷入不断的嵌套
@@ -68,67 +188,6 @@ Promise也有一些缺点。
 5. reason：拒绝原因，是reject里面传的参数，表示reject的原因
 
 ```
-
-### Promise状态
-Promise总共有三个状态:
-```
-1. pending: 一个promise在resolve或者reject前就处于这个状态。
-
-2. fulfilled: 一个promise被resolve后就处于fulfilled状态，这个状态不能再改变，而且必须拥有一个不可变的值(value)。
-
-3. rejected: 一个promise被reject后就处于rejected状态，这个状态也不能再改变，而且必须拥有一个不可变的拒绝原因(reason)。
-
-```
-
-注意这里的不可变指的是===，也就是说，如果value或者reason是对象，只要保证引用不变就行，规范没有强制要求里面的属性也不变。Promise状态其实很简单，画张图就是:
-
-![](https://img.ikstatic.cn/MTYwNTE2ODU2MDQ4MSM2OTUjanBn.jpg)
-
-### then方法
-
-一个promise必须拥有一个then方法来访问他的值或者拒绝原因。then方法有两个参数：
-
-```
-promise.then(onFulfilled, onRejected)
-```
-
-#### 参数可选
-
-onFulfilled 和 onRejected 都是可选参数。
-
-* 如果 onFulfilled 不是函数，其必须被忽略
-* 如果 onRejected 不是函数，其必须被忽略
-
-onFulfilled 特性
-如果 onFulfilled 是函数：
-
-* 当 promise 执行结束后其必须被调用，其第一个参数为 promise 的终值value
-* 在 promise 执行结束前其不可被调用
-* 其调用次数不可超过一次
-
-onRejected 特性
-如果 onRejected 是函数：
-
-* 当 promise 被拒绝执行后其必须被调用，其第一个参数为 promise 的据因reason
-* 在 promise 被拒绝执行前其不可被调用
-* 其调用次数不可超过一次
-
-#### 多次调用
-then 方法可以被同一个 promise 调用多次
-
-* 当 promise 成功执行时，所有 onFulfilled 需按照其注册顺序依次回调
-* 当 promise 被拒绝执行时，所有的 onRejected 需按照其注册顺序依次回调
-
-#### 返回
-then 方法必须返回一个 promise 对象
-```
-promise2 = promise1.then(onFulfilled, onRejected); 
-```
-* 如果 onFulfilled 或者 onRejected 返回一个值 x ，则运行 Promise 解决过程：[[Resolve]](promise2, x)
-* 如果 onFulfilled 或者 onRejected 抛出一个异常 e ，则 promise2 必须拒绝执行，并返回拒因 e
-* 如果 onFulfilled 不是函数且 promise1 成功执行， promise2 必须成功执行并返回相同的值
-* 如果 onRejected 不是函数且 promise1 拒绝执行， promise2 必须拒绝执行并返回相同的拒因
-
 
 Promise标准解读，主要记住两点
 ```
